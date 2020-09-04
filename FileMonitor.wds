@@ -1,0 +1,57 @@
+.catch {
+    .if '${arg1}' == 'init'
+    {
+        bp kernelbase!CreateFileA @"$$>a<${arg0} CreateFileA 0 1 5";
+        bp kernelbase!CreateFileW @"$$>a<${arg0} CreateFileW 1 1 5";
+
+        bp kernelbase!DeleteFileA @"$$>a<${arg0} DeleteFileA 0 1";
+        bp kernelbase!DeleteFileW @"$$>a<${arg0} DeleteFileW 1 1";
+        bp kernelbase!FindFirstFileA @"$$>a<${arg0} FindFirstFileA 0 1";
+        bp kernelbase!FindFirstFileW @"$$>a<${arg0} FindFirstFileW 1 1";
+        bp kernelbase!MoveFileA @"$$>a<${arg0} MoveFileA 0 1";
+        bp kernelbase!MoveFileW @"$$>a<${arg0} MoveFileW 1 1";
+
+
+
+
+        $$Ignore some debug events (to leseen output pollution)
+        sxi ld;
+
+        $$Display the list of the newly install breakpoints
+        bl;
+
+        .leave;
+    }
+
+    $$Display API name
+    .printf "${$arg1}: >":
+
+    $$Fetch the file name pointer
+    r $t0 = poi(@$csp +4 * ${$arg3});
+
+    $$Is it a unicode string pointer?
+    .if ${$arg2} ==1
+    {
+        .printf "%ma<\n" , @$t0;
+    }
+
+    $$ ApiID parameter set? 
+    .if ${/d:$arg4} == 1{
+        $$ ID of CreateFile API?
+        .if ${$arg4} == 5 {
+            $$Grab the name of the file so we compare it
+            aS /mu ${/v:FILE_NAME} @t0;
+            .block
+            {
+                .if $sicmp(@"${FILE_NAME}", @C:\temp\eb.txt") == 0{
+                    .leave;
+                }
+            }
+            ad /q ${/v:FILE_NAME};
+        }
+    }
+
+    $$ Continue after breakpoint
+    gc;
+
+}
